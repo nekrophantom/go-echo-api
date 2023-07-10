@@ -4,11 +4,13 @@ import (
 	"crud-simple-api/db"
 	"crud-simple-api/helper"
 	"crud-simple-api/models"
+	"crud-simple-api/validation"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
-	"golang.org/x/crypto/bcrypt"
 )
 
 
@@ -35,11 +37,39 @@ func CreateUser(c echo.Context) error {
 	}
 
 	// Encrypt Password with Bcrypt
-	hashPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	validate := validator.New()
+	err = validate.Struct(user)
+	if err != nil {
+		var errorMessages []string
+
+		validationErrors, ok := err.(validator.ValidationErrors)
+		if !ok {	
+			// Handle unexpected validation error
+			return c.JSON(http.StatusInternalServerError, helper.Response(http.StatusInternalServerError, "Validation error", nil))
+		}
+
+		for _, e := range validationErrors {
+			field := strings.SplitN(e.Namespace(), ".", 2)[1]
+			message := e.Tag()
+
+			errorMessage := field + " " + message
+			errorMessages = append(errorMessages, errorMessage)
+		}
+
+		return c.JSON(http.StatusBadRequest, helper.Response(http.StatusBadRequest, "Validation error", nil))
+	}
+
+	// Validate Password
+	if !validation.ValidatePassword(user.Password){
+		return c.JSON(http.StatusBadRequest, helper.Response(http.StatusBadRequest, "Invalid password", nil))
+	}
+
+	hashPassword, err := validation.EncryptPassword(user.Password)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, helper.Response(http.StatusInternalServerError, "Error encrypting password", nil))
 	}
-	user.Password = string(hashPassword)
+	user.Password = hashPassword
+
 
 	result := db.DB.Create(&user)
 	if result.Error != nil {
@@ -92,11 +122,11 @@ func UpdateUser(c echo.Context) error {
 
 	// Check if the password field is provided and encrypt it
 	if user.Password != ""{
-		hashPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		hashPassword, err := validation.EncryptPassword(user.Password)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, helper.Response(http.StatusInternalServerError, "Error encrypting password", nil))
 		}
-		user.Password = string(hashPassword)
+		user.Password = hashPassword	
 	}
 
 	// Save update user
