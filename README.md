@@ -2,4 +2,4 @@
 
 This is a simple Golang API using Echo Framework
 
-Still learning. Making it to be a project by improving it 
+Still learning GO by using Echo. Making this into personal project / portfolio project by improving it little by little
