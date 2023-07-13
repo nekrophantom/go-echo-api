@@ -1,9 +1,14 @@
 package routes
 
-import "github.com/labstack/echo/v4"
+import (
+	"crud-simple-api/controllers"
 
-func SetupRoutes(e *echo.Echo) {
+	"github.com/labstack/echo/v4"
+)
 
+func SetupRoutes(e *echo.Echo, ac *controllers.AuthController) {
+
+	e.POST("/login", ac.Login())
 
 	apiGroup := e.Group("/api")
 
